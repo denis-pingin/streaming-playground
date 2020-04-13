@@ -5,8 +5,8 @@ export const main = handler(async (event, context) => {
   const params = {
     TableName: process.env.streamsTableName,
     Key: {
-      userId: event.requestContext.identity.cognitoIdentityId,
-      streamId: event.pathParameters.id
+      poolId: event.pathParameters.poolId,
+      streamId: event.pathParameters.streamId
     }
   };
 

@@ -31,7 +31,7 @@ export async function getUserProfile(userId) {
   return userProfile;
 }
 
-export async function updateUserProfile(userId, streamingStatus) {
+export async function updateUserProfile(userId, streamingStatus, openTokToken) {
   const params = {
     TableName: process.env.userProfilesTableName,
     Key: {

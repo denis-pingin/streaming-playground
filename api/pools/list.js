@@ -3,14 +3,13 @@ import dynamoDb from "../../libs/dynamodb-lib";
 
 export const main = handler(async (event, context) => {
   const params = {
-    TableName: process.env.streamsTableName,
-    KeyConditionExpression: "poolId = :poolId",
+    TableName: process.env.poolsTableName,
+    KeyConditionExpression: "tenantId = :tenantId",
     ExpressionAttributeValues: {
-      ":poolId": event.pathParameters.poolId
+      ":tenantId": "default"
     }
   };
 
   const result = await dynamoDb.query(params);
-
   return result.Items;
 });

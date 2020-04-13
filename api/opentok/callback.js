@@ -3,19 +3,20 @@ import handler from "../../libs/handler-lib";
 import dynamoDb from "../../libs/dynamodb-lib";
 
 export const main = handler(async (event, context) => {
-  // const data = JSON.parse(event.body);
+  const data = JSON.parse(event.body);
+
+  console.log("OpenTok event:", data);
+
   const params = {
-    TableName: process.env.streamsTableName,
+    TableName: process.env.openTokEventsTableName,
     Item: {
-      userId: event.requestContext.identity.cognitoIdentityId,
-      streamId: uuid.v1(),
-      // content: data.content,
-      // attachment: data.attachment,
+      eventId: uuid.v1(),
+      eventData: data,
       createdAt: Date.now()
     }
   };
 
   await dynamoDb.put(params);
 
-  return params.Item;
+  return {status: true};
 });

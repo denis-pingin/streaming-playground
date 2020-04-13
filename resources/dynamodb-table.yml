@@ -1,4 +1,15 @@
 Resources:
+  OpenTokEventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${self:custom.openTokEventsTableName}
+      AttributeDefinitions:
+      - AttributeName: eventId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: eventId
+        KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
   UserProfilesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -10,17 +21,32 @@ Resources:
       - AttributeName: userId
         KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+  PoolsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${self:custom.poolsTableName}
+      AttributeDefinitions:
+      - AttributeName: tenantId
+        AttributeType: S
+      - AttributeName: poolId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: tenantId
+        KeyType: HASH
+      - AttributeName: poolId
+        KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
   StreamsTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: ${self:custom.streamsTableName}
       AttributeDefinitions:
-      - AttributeName: userId
+      - AttributeName: poolId
         AttributeType: S
       - AttributeName: streamId
         AttributeType: S
       KeySchema:
-      - AttributeName: userId
+      - AttributeName: poolId
         KeyType: HASH
       - AttributeName: streamId
         KeyType: RANGE
