@@ -1,6 +1,7 @@
 import handler from "../../libs/handler-lib";
 import dynamoDb from "../../libs/dynamodb-lib";
 import {getUserProfile, updateUserProfile} from "../../libs/user-profile-lib";
+import {sendStreamNotification} from "../../libs/websocket-lib";
 
 export const main = handler(async (event, context) => {
 
@@ -56,6 +57,11 @@ export const main = handler(async (event, context) => {
     streamId: null,
     openTokToken: null
   });
+
+  await sendStreamNotification("streamDeleted", {
+    poolId: stream.poolId,
+    streamId: stream.streamId
+  }, event);
 
   return {status: true};
 });

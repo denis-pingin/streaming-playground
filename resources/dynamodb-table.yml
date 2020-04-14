@@ -1,4 +1,19 @@
 Resources:
+  WebsocketConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: ${self:custom.websocketConnectionsTableName}
+      AttributeDefinitions:
+      - AttributeName: poolId
+        AttributeType: S
+      - AttributeName: connectionId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: poolId
+        KeyType: HASH
+      - AttributeName: connectionId
+        KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
   OpenTokEventsTable:
     Type: AWS::DynamoDB::Table
     Properties:
