@@ -10,7 +10,7 @@ export const main = handler(async (event, context) => {
   async function startOpenTokSession() {
     const opentok = new OpenTok(process.env.openTokApiKey, process.env.openTokSecret);
     return new Promise((resolve, reject) => {
-      opentok.createSession({mediaMode: 'routed', archiveMode: 'always'}, function (err, session) {
+      opentok.createSession({mediaMode: 'routed'}, function (err, session) {
         if (err) {
           reject(err);
         }
