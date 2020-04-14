@@ -1,7 +1,7 @@
 import handler from "../../libs/handler-lib";
 import dynamoDb from "../../libs/dynamodb-lib";
 import {getStream} from "../../libs/stream-lib";
-import {sendStreamNotification} from "../../libs/websocket-lib";
+import {sendWebsocketNotification} from "../../libs/websocket-lib";
 
 export const main = handler(async (event, context) => {
   let stream = await getStream(event.pathParameters.poolId, event.pathParameters.streamId);
@@ -27,7 +27,7 @@ export const main = handler(async (event, context) => {
   const result = await dynamoDb.update(params);
   stream = result.Attributes;
 
-  await sendStreamNotification("streamUpdated", stream, event);
+  await sendWebsocketNotification(stream.poolId, "streamUpdated", stream);
 
   return stream;
 });

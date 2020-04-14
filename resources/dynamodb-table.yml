@@ -4,12 +4,12 @@ Resources:
     Properties:
       TableName: ${self:custom.websocketConnectionsTableName}
       AttributeDefinitions:
-      - AttributeName: poolId
+      - AttributeName: keyId
         AttributeType: S
       - AttributeName: connectionId
         AttributeType: S
       KeySchema:
-      - AttributeName: poolId
+      - AttributeName: keyId
         KeyType: HASH
       - AttributeName: connectionId
         KeyType: RANGE

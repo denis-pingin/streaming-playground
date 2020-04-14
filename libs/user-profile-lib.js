@@ -1,4 +1,5 @@
 import dynamoDb from "./dynamodb-lib";
+import {sendWebsocketNotification} from "./websocket-lib";
 
 export async function getUserProfile(userId) {
   let params = {
@@ -47,6 +48,8 @@ export async function updateUserProfile(userId, streamingStatus, openTokToken) {
 
   const userProfile = (await dynamoDb.update(params)).Attributes;
   console.log("Updated user profile:", userProfile);
+
+  await sendWebsocketNotification(userId, "userProfileUpdated", userProfile);
 
   return userProfile;
 }

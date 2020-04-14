@@ -13,11 +13,11 @@ custom:
   # Our stage is based on what is passed in when running serverless
   # commands. Or fallsback to what we have set in the provider section.
   stage: ${opt:stage, self:provider.stage}
-  websocketConnectionsTableName: ${self:custom.stage}-websocket-sessions
-  openTokEventsTableName: ${self:custom.stage}-opentok-events
-  userProfilesTableName: ${self:custom.stage}-user-profiles
-  poolsTableName: ${self:custom.stage}-pools
-  streamsTableName: ${self:custom.stage}-streams
+  websocketConnectionsTableName: streaming-playground-${self:custom.stage}-websocket-sessions
+  openTokEventsTableName: streaming-playground-${self:custom.stage}-opentok-events
+  userProfilesTableName: streaming-playground-${self:custom.stage}-user-profiles
+  poolsTableName: streaming-playground-${self:custom.stage}-pools
+  streamsTableName: streaming-playground-${self:custom.stage}-streams
   dynamodb:
     stages:
     - offline
@@ -78,7 +78,10 @@ functions:
         route: $disconnect
         cors: true
     - websocket:
-        route: $default
+        route: enterPool
+        cors: true
+    - websocket:
+        route: exitPool
         cors: true
 
   opentok-callback:

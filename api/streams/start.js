@@ -3,7 +3,7 @@ import handler from "../../libs/handler-lib";
 import dynamoDb from "../../libs/dynamodb-lib";
 import {updateUserProfile} from "../../libs/user-profile-lib";
 import {getPool} from "../../libs/pool-lib";
-import {sendStreamNotification} from "../../libs/websocket-lib";
+import {sendWebsocketNotification} from "../../libs/websocket-lib";
 const OpenTok = require('opentok');
 
 export const main = handler(async (event, context) => {
@@ -49,7 +49,7 @@ export const main = handler(async (event, context) => {
     openTokToken: openTokToken
   });
 
-  await sendStreamNotification("streamCreated", stream, event);
+  await sendWebsocketNotification(stream.poolId, "streamCreated", stream);
 
   return stream;
 });
