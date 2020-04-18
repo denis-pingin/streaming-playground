@@ -1,9 +1,9 @@
 import handler from "../../libs/handler-lib";
 import {createWebsocketConnection, deleteWebsocketConnection} from "../../libs/websocket-lib";
 
-async function connect(userId, connectionId, domainName, stage) {
+async function connect(userId, connectionId, wsApiGatewayEndpoint) {
   try {
-    await createWebsocketConnection(userId, connectionId, domainName, stage);
+    await createWebsocketConnection(userId, connectionId, wsApiGatewayEndpoint);
     console.log("Created websocket connection:", connectionId);
   } catch (err) {
     console.log("Error creating websocket connection:", err);
@@ -23,9 +23,9 @@ async function disconnect(connectionId) {
   // return {statusCode: 200, body: 'Disconnected'};
 }
 
-async function enterPool(poolId, connectionId, domainName, stage) {
+async function enterPool(poolId, connectionId, wsApiGatewayEndpoint) {
   try {
-    await createWebsocketConnection(poolId, connectionId, domainName, stage);
+    await createWebsocketConnection(poolId, connectionId, wsApiGatewayEndpoint);
     console.log("Entered pool:", poolId);
   } catch (err) {
     console.log("Error entering pool:", err);
@@ -49,8 +49,13 @@ export const main = handler(async (event, context) => {
   console.log("Event:", event);
   const route = event.requestContext.routeKey;
   const connectionId = event.requestContext.connectionId;
-  const domainName = event.requestContext.domainName;
-  const stage = event.requestContext.stage;
+
+
+  let wsApiGatewayEndpoint = "http://localhost:4001";
+  if (!process.env.IS_OFFLINE) {
+    wsApiGatewayEndpoint = `https://${event.requestContext.domainName}/${event.requestContext.stage}`;
+  }
+  console.log("Websocket API Gateway endpoint:", wsApiGatewayEndpoint);
 
   switch (route) {
     case "$connect":
@@ -59,13 +64,13 @@ export const main = handler(async (event, context) => {
       if (!userId) {
         return {statusCode: 500, body: "Query string parameter userId required"};
       }
-      return connect(userId, connectionId, domainName, stage);
+      return connect(userId, connectionId, wsApiGatewayEndpoint);
     case "$disconnect":
       return disconnect(connectionId);
     case "enterPool":
       const enterPoolMessage = JSON.parse(event.body);
       console.log("Enter pool message:", enterPoolMessage);
-      return enterPool(enterPoolMessage.data.poolId, connectionId, domainName, stage);
+      return enterPool(enterPoolMessage.data.poolId, connectionId, wsApiGatewayEndpoint);
     case "exitPool":
       const exitPoolMessage = JSON.parse(event.body);
       console.log("Exit pool message:", exitPoolMessage);

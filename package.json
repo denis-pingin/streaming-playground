@@ -18,11 +18,12 @@
     "serverless-bundle": "^1.3.3",
     "serverless-dotenv-plugin": "^2.3.2",
     "serverless-offline": "^6.1.4",
-    "serverless-dynamodb-local": "^0.2.39"
+    "serverless-dynamodb-local": "^0.2.39",
+    "serverless-dynamodb-client": "^0.0.2"
   },
   "dependencies": {
+    "opentok": "^2.9.2",
     "stripe": "^8.39.0",
-    "uuid": "^7.0.3",
-    "opentok": "^2.9.2"
+    "uuid": "^7.0.3"
   }
 }

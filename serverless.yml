@@ -18,13 +18,18 @@ custom:
   userProfilesTableName: streaming-playground-${self:custom.stage}-user-profiles
   poolsTableName: streaming-playground-${self:custom.stage}-pools
   streamsTableName: streaming-playground-${self:custom.stage}-streams
+  serverless-offline:
+    httpPort: 4000
+    websocketPort: 4001
+    host: 0.0.0.0
   dynamodb:
     stages:
     - offline
     start:
       port: 8000
-      inMemory: true
+      inMemory: false
       migrate: true
+      dbPath: "dynamodb-offline"
     migration:
       dir: offline/migrations
 

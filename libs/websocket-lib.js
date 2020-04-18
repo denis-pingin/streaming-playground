@@ -1,14 +1,13 @@
 import dynamoDb from "./dynamodb-lib";
 import AWS from "aws-sdk";
 
-export async function createWebsocketConnection(keyId, connectionId, domainName, stage) {
+export async function createWebsocketConnection(keyId, connectionId, wsApiGatewayEndpoint) {
   const params = {
     TableName: process.env.websocketConnectionsTableName,
     Item: {
       keyId: keyId,
       connectionId: connectionId,
-      domainName: domainName,
-      stage: stage
+      wsApiGatewayEndpoint: wsApiGatewayEndpoint
     }
   };
 
@@ -28,15 +27,14 @@ export async function deleteWebsocketConnection(keyId, connectionId) {
 }
 
 function getApiGateway(connection, apiGateways) {
-  const endpoint = 'https://' + connection.domainName + '/' + connection.stage;
-  let apiGateway = apiGateways[endpoint];
+  let apiGateway = apiGateways[connection.wsApiGatewayEndpoint];
   if (!apiGateway) {
     apiGateway = new AWS.ApiGatewayManagementApi({
       apiVersion: '2018-11-29',
-      endpoint: endpoint
+      endpoint: connection.wsApiGatewayEndpoint
     });
-    apiGateways[endpoint] = apiGateway;
-    console.log("Created API Gateway:", apiGateway);
+    apiGateways[connection.wsApiGatewayEndpoint] = apiGateway;
+    console.log("Created API Gateway:", connection.wsApiGatewayEndpoint);
   }
   return apiGateway;
 }

@@ -53,3 +53,4 @@ env.yml
 
 # DynamoDB offline
 .dynamodb
+dynamodb-offline/shared-local-instance.db

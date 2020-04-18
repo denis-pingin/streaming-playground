@@ -1,6 +1,6 @@
-import AWS from "aws-sdk";
+const dynamodb = require('serverless-dynamodb-client');
 
-const client = new AWS.DynamoDB.DocumentClient();
+const client = dynamodb.doc;
 
 export default {
   scan: (params) => client.scan(params).promise(),
