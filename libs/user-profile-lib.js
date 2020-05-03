@@ -1,5 +1,6 @@
 import dynamoDb from "./dynamodb-lib";
-import {sendWebsocketNotification} from "./websocket-lib";
+import {websocketPubSub} from "../api/graphql/websockets";
+import {STREAMING_STATUS_UPDATED} from "../api/graphql/user";
 
 export async function getUserProfile(userId) {
   let params = {
@@ -32,7 +33,7 @@ export async function getUserProfile(userId) {
   return userProfile;
 }
 
-export async function updateUserProfile(userId, streamingStatus, openTokToken) {
+export async function updateUserProfile(userId, streamingStatus) {
   const params = {
     TableName: process.env.userProfilesTableName,
     Key: {
@@ -49,7 +50,7 @@ export async function updateUserProfile(userId, streamingStatus, openTokToken) {
   const userProfile = (await dynamoDb.update(params)).Attributes;
   console.log("Updated user profile:", userProfile);
 
-  await sendWebsocketNotification(userId, "userProfileUpdated", userProfile);
+  await websocketPubSub.publish(STREAMING_STATUS_UPDATED, userProfile);
 
   return userProfile;
 }

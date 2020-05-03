@@ -1,6 +1,8 @@
 import handler from "../../libs/handler-lib";
 import {createWebsocketConnection, deleteWebsocketConnection} from "../../libs/websocket-lib";
-
+/*
+ *  NOT USED
+ */
 async function connect(userId, connectionId, wsApiGatewayEndpoint) {
   try {
     await createWebsocketConnection(userId, connectionId, wsApiGatewayEndpoint);
@@ -46,10 +48,8 @@ async function exitPool(poolId, connectionId) {
 }
 
 export const main = handler(async (event, context) => {
-  console.log("Event:", event);
   const route = event.requestContext.routeKey;
   const connectionId = event.requestContext.connectionId;
-
 
   let wsApiGatewayEndpoint = "http://localhost:4001";
   if (!process.env.IS_OFFLINE) {

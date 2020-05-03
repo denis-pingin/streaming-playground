@@ -1,6 +1,8 @@
 import dynamoDb from "./dynamodb-lib";
 import AWS from "aws-sdk";
-
+/*
+ *  NOT USED
+ */
 export async function createWebsocketConnection(keyId, connectionId, wsApiGatewayEndpoint) {
   const params = {
     TableName: process.env.websocketConnectionsTableName,

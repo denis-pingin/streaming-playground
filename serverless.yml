@@ -5,19 +5,26 @@ package:
 
 plugins:
 - serverless-dynamodb-local
-- serverless-bundle # Package our functions with Webpack
+- serverless-bundle
 - serverless-offline
+- serverless-plugin-offline-dynamodb-stream
 - serverless-dotenv-plugin # Load .env as environment variables
-
+- ./plugins/offline-invalidate
 custom:
+  appName: streaming-playground
   # Our stage is based on what is passed in when running serverless
   # commands. Or fallsback to what we have set in the provider section.
   stage: ${opt:stage, self:provider.stage}
-  websocketConnectionsTableName: streaming-playground-${self:custom.stage}-websocket-sessions
-  openTokEventsTableName: streaming-playground-${self:custom.stage}-opentok-events
-  userProfilesTableName: streaming-playground-${self:custom.stage}-user-profiles
-  poolsTableName: streaming-playground-${self:custom.stage}-pools
-  streamsTableName: streaming-playground-${self:custom.stage}-streams
+  graphqlWebsocketConnectionsTableName: ${self:custom.appName}-${self:custom.stage}-graphql-websocket-connections
+  graphqlWebsocketSubscriptionsTableName: ${self:custom.appName}-${self:custom.stage}-graphql-websocket-subscriptions
+  graphqlWebsocketSubscriptionOperationsTableName: ${self:custom.appName}-${self:custom.stage}-graphql-websocket-subscription-operations
+  graphqlWebsocketEventsTableName: ${self:custom.appName}-${self:custom.stage}-graphql-websocket-events
+  websocketConnectionsTableName: ${self:custom.appName}-${self:custom.stage}-websocket-sessions
+  openTokEventsTableName: ${self:custom.appName}-${self:custom.stage}-opentok-events
+  userProfilesTableName: ${self:custom.appName}-${self:custom.stage}-user-profiles
+  poolsTableName: ${self:custom.appName}-${self:custom.stage}-pools
+  streamsTableName: ${self:custom.appName}-${self:custom.stage}-streams
+  graphqlEndpoint: /${self:custom.stage}/graphql
   serverless-offline:
     httpPort: 4000
     websocketPort: 4001
@@ -32,6 +39,16 @@ custom:
       dbPath: "dynamodb-offline"
     migration:
       dir: offline/migrations
+  dynamodbStream:
+    host: localhost
+    port: 8000
+    # this fixes the problem with missing region
+    region: eu-central-1
+    pollForever: true
+    streams:
+    - table: ${self:custom.graphqlWebsocketEventsTableName}
+      functions:
+      - dynamoDBStreamHandler
 
 provider:
   name: aws
@@ -42,6 +59,11 @@ provider:
     websocket: true
     restApi: true
   environment:
+    websocketPort: ${self:custom.serverless-offline.websocketPort}
+    graphqlWebsocketConnectionsTableName: ${self:custom.graphqlWebsocketConnectionsTableName}
+    graphqlWebsocketSubscriptionsTableName: ${self:custom.graphqlWebsocketSubscriptionsTableName}
+    graphqlWebsocketSubscriptionOperationsTableName: ${self:custom.graphqlWebsocketSubscriptionOperationsTableName}
+    graphqlWebsocketEventsTableName: ${self:custom.graphqlWebsocketEventsTableName}
     websocketConnectionsTableName: ${self:custom.websocketConnectionsTableName}
     openTokEventsTableName: ${self:custom.openTokEventsTableName}
     userProfilesTableName: ${self:custom.userProfilesTableName}
@@ -54,6 +76,41 @@ provider:
   iamRoleStatements:
   - Effect: Allow
     Action:
+    - dynamodb:DeleteItem
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:UpdateItem
+    Resource:
+    - "Fn::GetAtt": [ ConnectionsDynamoDBTable, Arn ]
+  - Effect: Allow
+    Action:
+    - dynamodb:DescribeStream
+    - dynamodb:GetRecords
+    - dynamodb:GetShardIterator
+    - dynamodb:ListStreams
+    - dynamodb:PutItem
+    Resource:
+    - "Fn::GetAtt": [ EventsDynamoDBTable, Arn ]
+  - Effect: Allow
+    Action:
+    - dynamodb:BatchWriteItem
+    - dynamodb:DeleteItem
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    - dynamodb:Query
+    - dynamodb:Scan
+    Resource:
+    - "Fn::GetAtt": [ SubscriptionsDynamoDBTable, Arn ]
+  - Effect: Allow
+    Action:
+    - dynamodb:BatchWriteItem
+    - dynamodb:DeleteItem
+    - dynamodb:GetItem
+    - dynamodb:PutItem
+    Resource:
+    - "Fn::GetAtt": [ SubscriptionOperationsDynamoDBTable, Arn ]
+  - Effect: Allow
+    Action:
     - dynamodb:DescribeTable
     - dynamodb:Query
     - dynamodb:Scan
@@ -62,7 +119,7 @@ provider:
     - dynamodb:UpdateItem
     - dynamodb:DeleteItem
     Resource:
-    - "Fn::GetAtt": [ WebsocketConnectionsTable, Arn ]
+    - "Fn::GetAtt": [ OpenTokEventsTable, Arn ]
     - "Fn::GetAtt": [ UserProfilesTable, Arn ]
     - "Fn::GetAtt": [ PoolsTable, Arn ]
     - "Fn::GetAtt": [ StreamsTable, Arn ]
@@ -71,10 +128,16 @@ provider:
     - execute-api:Invoke
     Resource:
     - "Fn::Join": ["", ["arn:aws:execute-api:",{"Ref":"AWS::Region"},":",{"Ref":"AWS::AccountId"},":",{"Ref":"ApiGatewayRestApi"},"/${self:custom.stage}/*"]]
+  - Effect: Allow
+    Action:
+    - execute-api:ManageConnections
+    Resource:
+    - "Fn::Join": ["", ["arn:aws:execute-api:",{"Ref":"AWS::Region"},":",{"Ref":"AWS::AccountId"},":",{"Ref":"ApiGatewayRestApi"},"/${self:custom.stage}/POST/@connections/*"]]
 
 functions:
-  websocket-handler:
-    handler: api/websocket/handler.main
+
+  webSocketHandler:
+    handler: api/graphql/main.handleWebSocket
     events:
     - websocket:
         route: $connect
@@ -83,11 +146,26 @@ functions:
         route: $disconnect
         cors: true
     - websocket:
-        route: enterPool
+        route: $default
         cors: true
-    - websocket:
-        route: exitPool
+
+  dynamoDBStreamHandler:
+    handler: api/graphql/main.handleDynamoDBStream
+    events:
+    - stream:
+        enabled: true
+        type: dynamodb
+        arn:
+          Fn::GetAtt: [EventsDynamoDBTable, StreamArn]
+
+  graphqlHandler:
+    handler: api/graphql/main.handleHttp
+    events:
+    - http:
+        path: /graphql
+        method: any
         cors: true
+        authorizer: aws_iam
 
   opentok-callback:
     handler: api/opentok/callback.main
@@ -98,119 +176,120 @@ functions:
         cors: true
         authorizer: aws_iam
 
-  user-profile:
-    handler: api/user/profile.main
-    events:
-    - http:
-        path: user/profile
-        method: get
-        cors: true
-        authorizer: aws_iam
-
-  streams-list:
-    handler: api/streams/list.main
-    events:
-    - http:
-        path: pools/{poolId}/streams
-        method: get
-        cors: true
-        authorizer: aws_iam
-
-  streams-get:
-    handler: api/streams/get.main
-    events:
-    - http:
-        path: pools/{poolId}/streams/{streamId}
-        method: get
-        cors: true
-        authorizer: aws_iam
-
-  streams-start:
-    handler: api/streams/start.main
-    events:
-    - http:
-        path: pools/{poolId}/streams
-        method: post
-        cors: true
-        authorizer: aws_iam
-
-  streams-stop:
-    handler: api/streams/stop.main
-    events:
-    - http:
-        path: pools/{poolId}/streams/{streamId}
-        method: delete
-        cors: true
-        authorizer: aws_iam
-
-  streams-update:
-    handler: api/streams/update.main
-    events:
-    - http:
-        path: pools/{poolId}/streams/{streamId}
-        method: put
-        cors: true
-        authorizer: aws_iam
-
-  pools-create:
-    handler: api/pools/create.main
-    events:
-    - http:
-        path: pools
-        method: post
-        cors: true
-        authorizer: aws_iam
-
-  pools-get:
-    handler: api/pools/get.main
-    events:
-    - http:
-        path: pools/{poolId}
-        method: get
-        cors: true
-        authorizer: aws_iam
-
-  pools-list:
-    handler: api/pools/list.main
-    events:
-    - http:
-        path: pools
-        method: get
-        cors: true
-        authorizer: aws_iam
-
-  pools-update:
-    handler: api/pools/update.main
-    events:
-    - http:
-        path: pools/{poolId}
-        method: put
-        cors: true
-        authorizer: aws_iam
-
-  pools-delete:
-    handler: api/pools/delete.main
-    events:
-    - http:
-        path: pools/{poolId}
-        method: delete
-        cors: true
-        authorizer: aws_iam
-
-  billing:
-    handler: api/billing/billing.main
-    events:
-    - http:
-        path: billing
-        method: post
-        cors: true
-        authorizer: aws_iam
+#  user-profile:
+#    handler: api/user/profile.main
+#    events:
+#    - http:
+#        path: user/profile
+#        method: get
+#        cors: true
+#        authorizer: aws_iam
+#
+#  streams-list:
+#    handler: api/streams/list.main
+#    events:
+#    - http:
+#        path: pools/{poolId}/streams
+#        method: get
+#        cors: true
+#        authorizer: aws_iam
+#
+#  streams-get:
+#    handler: api/streams/get.main
+#    events:
+#    - http:
+#        path: pools/{poolId}/streams/{streamId}
+#        method: get
+#        cors: true
+#        authorizer: aws_iam
+#
+#  streams-start:
+#    handler: api/streams/start.main
+#    events:
+#    - http:
+#        path: pools/{poolId}/streams
+#        method: post
+#        cors: true
+#        authorizer: aws_iam
+#
+#  streams-stop:
+#    handler: api/streams/stop.main
+#    events:
+#    - http:
+#        path: pools/{poolId}/streams/{streamId}
+#        method: delete
+#        cors: true
+#        authorizer: aws_iam
+#
+#  streams-update:
+#    handler: api/streams/update.main
+#    events:
+#    - http:
+#        path: pools/{poolId}/streams/{streamId}
+#        method: put
+#        cors: true
+#        authorizer: aws_iam
+#
+#  pools-create:
+#    handler: api/pools/create.main
+#    events:
+#    - http:
+#        path: pools
+#        method: post
+#        cors: true
+#        authorizer: aws_iam
+#
+#  pools-get:
+#    handler: api/pools/get.main
+#    events:
+#    - http:
+#        path: pools/{poolId}
+#        method: get
+#        cors: true
+#        authorizer: aws_iam
+#
+#  pools-list:
+#    handler: api/pools/list.main
+#    events:
+#    - http:
+#        path: pools
+#        method: get
+#        cors: true
+#        authorizer: aws_iam
+#
+#  pools-update:
+#    handler: api/pools/update.main
+#    events:
+#    - http:
+#        path: pools/{poolId}
+#        method: put
+#        cors: true
+#        authorizer: aws_iam
+#
+#  pools-delete:
+#    handler: api/pools/delete.main
+#    events:
+#    - http:
+#        path: pools/{poolId}
+#        method: delete
+#        cors: true
+#        authorizer: aws_iam
+#
+#  billing:
+#    handler: api/billing/billing.main
+#    events:
+#    - http:
+#        path: billing
+#        method: post
+#        cors: true
+#        authorizer: aws_iam
 
 resources:
 # API Gateway Errors
 - ${file(resources/api-gateway-errors.yml)}
 # DynamoDB
 - ${file(resources/dynamodb-table.yml)}
+- ${file(resources/graphql-websocket-dynamodb-table.yml)}
 # S3
 - ${file(resources/s3-bucket.yml)}
 # Cognito
