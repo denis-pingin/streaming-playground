@@ -4,6 +4,7 @@ import * as uuid from "uuid";
 import {generateOpenTokToken} from "./opentok-lib";
 import {websocketPubSub} from "../api/graphql/websockets";
 import {STREAM_UPDATED, STREAMING_STARTED, STREAMING_STOPPED} from "../api/graphql/stream";
+import {POOL_UPDATED} from "../api/graphql/pool";
 
 export async function getStream(poolId, streamId) {
   let params = {
@@ -76,8 +77,15 @@ async function deleteStream(stream) {
     }
   };
   await dynamoDb.delete(params);
+
   console.log("Deleted stream:", stream);
+
   await websocketPubSub.publish(STREAMING_STOPPED, stream);
+
+  const pool = await getPool(stream.poolId);
+  if (pool) {
+    await websocketPubSub.publish(POOL_UPDATED, pool);
+  }
 }
 
 export async function startStreaming(userId, poolId, name) {
@@ -96,6 +104,7 @@ export async function startStreaming(userId, poolId, name) {
   stream.openTokToken = openTokToken;
 
   await websocketPubSub.publish(STREAMING_STARTED, stream);
+  await websocketPubSub.publish(POOL_UPDATED, pool);
 
   return stream;
 }
@@ -110,6 +119,7 @@ export async function stopStreaming(userId, poolId, streamId) {
   if (stream) {
     await deleteStream(stream);
   }
+
   return stream;
 }
 

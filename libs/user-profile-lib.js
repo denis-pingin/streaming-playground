@@ -2,6 +2,27 @@ import dynamoDb from "./dynamodb-lib";
 import {websocketPubSub} from "../api/graphql/websockets";
 import {STREAMING_STATUS_UPDATED} from "../api/graphql/user";
 
+export async function createUserProfile(userId) {
+  const params = {
+    TableName: process.env.userProfilesTableName,
+    Item: {
+      userId: userId,
+      streamingStatus: {
+        streaming: false,
+        streamId: null,
+      },
+      updatedAt: Date.now(),
+      createdAt: Date.now()
+    }
+  };
+  await dynamoDb.put(params);
+  const userProfile = params.Item;
+
+  console.log("Created user profile:", userProfile);
+
+  return userProfile;
+}
+
 export async function getUserProfile(userId) {
   let params = {
     TableName: process.env.userProfilesTableName,
@@ -14,21 +35,7 @@ export async function getUserProfile(userId) {
   console.log("User profile:", userProfile);
 
   if (!userProfile) {
-    params = {
-      TableName: process.env.userProfilesTableName,
-      Item: {
-        userId: userId,
-        streamingStatus: {
-          streaming: false,
-          streamId: null,
-        },
-        updatedAt: Date.now(),
-        createdAt: Date.now()
-      }
-    };
-    await dynamoDb.put(params);
-    userProfile = params.Item;
-    console.log("User profile created:", userProfile);
+    userProfile = await createUserProfile(userId);
   }
   return userProfile;
 }

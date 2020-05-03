@@ -1,6 +1,8 @@
 import dynamoDb from "./dynamodb-lib";
 import * as uuid from "uuid";
 import {generateOpenTokToken, startOpenTokSession} from "./opentok-lib";
+import {websocketPubSub} from "../api/graphql/websockets";
+import {POOL_CREATED, POOL_DELETED, POOL_UPDATED} from "../api/graphql/pool";
 
 export async function getPools(tenantId = "default") {
   const params = {
@@ -64,12 +66,17 @@ export async function createPool(userId, name) {
   };
 
   await dynamoDb.put(params);
+  const pool = params.Item;
 
-  return params.Item;
+  console.log("Created new pool:", pool);
+
+  websocketPubSub.publish(POOL_CREATED, pool);
+
+  return pool;
 }
 
-export async function updatePoolName(userId, poolId, name) {
-  const pool = await getPool(poolId);
+export async function updatePool(userId, poolId, name) {
+  let pool = await getPool(poolId);
   if (pool.ownerUserId !== userId) {
     throw new Error("Permission denied");
   }
@@ -92,7 +99,13 @@ export async function updatePoolName(userId, poolId, name) {
   };
 
   const result = await dynamoDb.update(params);
-  return result.Attributes;
+  pool = result.Attributes;
+
+  console.log("Updated pool:", pool);
+
+  websocketPubSub.publish(POOL_UPDATED, pool);
+
+  return pool;
 }
 
 export async function deletePool(userId, poolId) {
@@ -110,6 +123,9 @@ export async function deletePool(userId, poolId) {
   };
 
   await dynamoDb.delete(params);
+
+  console.log("Deleted pool:", pool);
+  websocketPubSub.publish(POOL_DELETED, pool);
 
   return pool;
 }
