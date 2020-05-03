@@ -171,7 +171,7 @@ functions:
     handler: api/opentok/callback.main
     events:
     - http:
-        path: opentok/callback
+        path: opentok/cb
         method: post
         cors: true
 

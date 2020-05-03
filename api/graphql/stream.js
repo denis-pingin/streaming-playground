@@ -23,6 +23,9 @@ export const StreamType = new GraphQLObjectType({
       streamId: {
         type: new GraphQLNonNull(GraphQLString)
       },
+      userId: {
+        type: new GraphQLNonNull(GraphQLString)
+      },
       openTokStreamId: {
         type: GraphQLString
       },

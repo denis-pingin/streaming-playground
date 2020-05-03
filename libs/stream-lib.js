@@ -13,13 +13,28 @@ export async function getStream(poolId, streamId) {
       streamId: streamId
     }
   };
-
   const result = await dynamoDb.get(params);
-  if (!result.Item) {
-    throw new Error("Stream not found.");
-  }
-
   return result.Item;
+}
+
+async function createStream(userId, poolId, name) {
+  const stream = {
+    poolId: poolId,
+    streamId: uuid.v1(),
+    name: name,
+    userId: userId,
+    streaming: true,
+    updatedAt: Date.now(),
+    createdAt: Date.now()
+  };
+  const params = {
+    TableName: process.env.streamsTableName,
+    Item: stream
+  };
+
+  await dynamoDb.put(params);
+  console.log("Stream created:", stream);
+  return stream;
 }
 
 export async function getStreamsByPoolId(poolId) {
@@ -32,8 +47,37 @@ export async function getStreamsByPoolId(poolId) {
   };
 
   const result = await dynamoDb.query(params);
-
   return result.Items;
+}
+
+export async function deleteStreamByOpenTokStreamId(openTokStreamId) {
+  let params = {
+    TableName: process.env.streamsTableName,
+    FilterExpression: "openTokStreamId = :openTokStreamId",
+    ExpressionAttributeValues: {
+      ":openTokStreamId": openTokStreamId
+    }
+  };
+  const result = await dynamoDb.scan(params);
+  const streams = result.Items;
+  console.log("Found streams for openTokStreamId:", openTokStreamId, streams);
+
+  streams.forEach(stream => {
+    deleteStream(stream);
+  });
+}
+
+async function deleteStream(stream) {
+  const params = {
+    TableName: process.env.streamsTableName,
+    Key: {
+      poolId: stream.poolId,
+      streamId: stream.streamId
+    }
+  };
+  await dynamoDb.delete(params);
+  console.log("Deleted stream:", stream);
+  await websocketPubSub.publish(STREAMING_STOPPED, stream);
 }
 
 export async function startStreaming(userId, poolId, name) {
@@ -48,23 +92,8 @@ export async function startStreaming(userId, poolId, name) {
 
   const openTokToken = generateOpenTokToken(pool.openTokSessionConfig.sessionId);
 
-  const params = {
-    TableName: process.env.streamsTableName,
-    Item: {
-      poolId: poolId,
-      streamId: uuid.v1(),
-      name: name,
-      userId: userId,
-      streaming: true,
-      updatedAt: Date.now(),
-      createdAt: Date.now()
-    }
-  };
-
-  await dynamoDb.put(params);
-  const stream = params.Item;
+  const stream = await createStream(userId, poolId, name);
   stream.openTokToken = openTokToken;
-  console.log("Streaming started:", stream);
 
   await websocketPubSub.publish(STREAMING_STARTED, stream);
 
@@ -72,32 +101,15 @@ export async function startStreaming(userId, poolId, name) {
 }
 
 export async function stopStreaming(userId, poolId, streamId) {
-  let params = {
-    TableName: process.env.streamsTableName,
-    Key: {
-      poolId: poolId,
-      streamId: streamId
-    }
-  };
-
-  let result = await dynamoDb.get(params);
-  let stream = result.Item;
-
-  if (stream) {
-    const params = {
-      TableName: process.env.streamsTableName,
-      Key: {
-        poolId: poolId,
-        streamId: streamId
-      }
-    };
-
-    await dynamoDb.delete(params);
-    console.log("Stopped streaming:", stream);
+  console.log("Stopping streaming:", userId, poolId, streamId);
+  const stream = await getStream(poolId, streamId);
+  console.log("Stream:", stream);
+  if (stream.userId !== userId) {
+    throw new Error("Permission denied");
   }
-
-  await websocketPubSub.publish(STREAMING_STOPPED, stream);
-
+  if (stream) {
+    await deleteStream(stream);
+  }
   return stream;
 }
 
