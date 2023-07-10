@@ -20,7 +20,7 @@
     "serverless-bundle": "^1.4.0",
     "serverless-dotenv-plugin": "^2.4.2",
     "serverless-dynamodb-client": "^0.0.2",
-    "serverless-dynamodb-local": "^0.2.39",
+    "serverless-dynamodb-local": "^1.0.2",
     "serverless-offline": "^6.1.4",
     "serverless-plugin-offline-dynamodb-stream": "^1.0.19"
   },
